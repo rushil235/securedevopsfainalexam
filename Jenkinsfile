@@ -1,47 +1,70 @@
 pipeline {
     agent any
- 
+
     environment {
+        GITHUB_TOKEN = credentials('github-personal-access-token')
         IMAGE_NAME = "healthcare-app"
         CONTAINER_NAME = "healthcare-container"
-        APP_PORT = "3000"
+        APP_PORT = "3000"  // Exposing this on the host machine
     }
- 
+
     stages {
         stage('Clone Repo') {
             steps {
-                git 'https://github.com/yourusername/https://github.com/rushil235/securedevopsfainalexam.git'
+                script {
+                    echo "📥 Cloning the GitHub Repository..."
+                    git branch: 'main', url: 'https://github.com/ramagurijala882/Ramafinalsd.git'
+                }
             }
         }
- 
+
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                script {
+                    echo "🐳 Building Docker Image..."
+                    sh "docker build -t ${IMAGE_NAME} ."
+                }
             }
         }
- 
+
+        stage('Basic Security Compliance Check') {
+            steps {
+                script {
+                    echo "🛡️ Checking for basic container security compliance..."
+                    echo "Checking for root user in the container..."
+                    sh "docker inspect ${IMAGE_NAME} | grep '\"User\": \"\"' && echo '⚠️ Container running as root!' || echo '✅ No root user found!'"
+                }
+            }
+        }
+
         stage('Stop Old Container') {
             steps {
-                sh """
-                    docker stop $CONTAINER_NAME || true
-                    docker rm $CONTAINER_NAME || true
-                """
+                script {
+                    echo "🛑 Stopping and Removing Old Container..."
+                    sh """
+                        docker stop ${CONTAINER_NAME} || true
+                        docker rm ${CONTAINER_NAME} || true
+                    """
+                }
             }
         }
- 
-        stage('Run Container') {
+
+        stage('Run Docker Container') {
             steps {
-                sh 'docker run -d -p $APP_PORT:$APP_PORT --name $CONTAINER_NAME $IMAGE_NAME'
+                script {
+                    echo "🚀 Running Docker Container..."
+                    sh "docker run -d -p ${APP_PORT}:80 --name ${CONTAINER_NAME} ${IMAGE_NAME}"
+                }
             }
         }
     }
- 
+
     post {
         success {
-            echo "🚀 App deployed! Access it at: http://<your-EC2-IP>:${APP_PORT}"
+            echo "✅ Deployment successful! Visit: http://<your-ec2-ip>:${APP_PORT}"
         }
         failure {
-            echo "❌ Deployment failed."
+            echo "❌ Deployment failed. Check logs."
         }
     }
 }
